@@ -22,5 +22,5 @@ sklearn
 ### The model of VT-SNN is as follows:
 
 <p align="center">
-<img src="[https://github.com/UAIBC-Brain/UA-SNN/blob/main/new_model.png">
+<img src="https://github.com/UAIBC-Brain/UA-SNN/blob/main/new_model.png">
 </p>
