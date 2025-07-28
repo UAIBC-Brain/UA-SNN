@@ -84,7 +84,7 @@ def main():
     model.to(args.device)
 
     #dataset
-    json_file = "./jsons/old/dataset_mat - spilt3.json"
+    json_file = "./jsons/old/dataset_AD_test_10fold1.json"
     root_dir = "./dataset/data_round"
     train_dataset = AgeData(json_file, root_dir, split='training', transform=None)
     train_loader = DataLoader(train_dataset, batch_size=15, shuffle=True, num_workers=1)
