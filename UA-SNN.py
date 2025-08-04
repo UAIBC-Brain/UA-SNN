@@ -282,18 +282,17 @@ def main():
                 label_onehot = F.one_hot(label, 2).float()
                 out_fr = 0
                 image = (image.unsqueeze(0)).repeat(args.T, 1, 1, 1, 1, 1)
-                for t in range(args.T):
+                 for t in range(args.T):
                     image_x = image[t]
                     out_fr += model(image_x)
                     out_fr = out_fr / 2
                     out_fr_1 = softplus_(out_fr) + 1.0
                     out_fr = out_fr.float()
                     model_pred_all.append(out_fr_1.to(args.device))
-                    p = torch.sigmoid(out_fr).squeeze()
-                    # 计算置信度：正类概率和负类概率中的最大值
-                    confidence_score = torch.max(p, 1 - p).max().item()  # 取最大概率作为置信度
+                    p = F.softmax(out_fr, dim=1)  # 转换为概率分布
+                    confidence_score = p.max(dim=1)[0].item()  # 取最大概率作为置信度
                     model_pred_all.clear()
-                    if confidence_score >= 0.95:
+                    if confidence_score >= 0.85:
                         best_T = t + 1
                         break  # 满足条件，T循环
                     else:
@@ -392,4 +391,5 @@ def main():
 
 
 if __name__ == '__main__':
+
     main()
