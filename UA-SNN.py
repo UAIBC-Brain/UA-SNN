@@ -297,7 +297,7 @@ def main():
                         break  # 满足条件，T循环
                     else:
                         best_T = t + 1
-                out_fr = out_fr / args.T
+                out_fr = out_fr / best_T
                 if clf_type == "exp":
                     evi_alp_ = torch.exp(out_fr) + 1.0
                 elif clf_type == "softplus":
@@ -393,3 +393,4 @@ def main():
 if __name__ == '__main__':
 
     main()
+
