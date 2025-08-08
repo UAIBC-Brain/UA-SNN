@@ -20,7 +20,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="PyTorch Training")
     parser.add_argument("--logdir", default="test", type=str, help="directory to save the tensorboard logs")
-    parser.add_argument("--epochs", default=3000, type=int, help="number of training epochs")
+    parser.add_argument("--epochs", default=400, type=int, help="number of training epochs")
     parser.add_argument('-device', default='cuda:0', help='device')
     parser.add_argument('-out-dir', type=str, default='./logs', help='root dir for saving logs and checkpoint')
     parser.add_argument("--in_channels", default=1, type=int, help="number of input channels")
@@ -65,7 +65,7 @@ def main():
         patch_size=16,
         in_channels=1,
         num_classes=2,
-        embed_dims=96,
+        embed_dims=64,
         num_heads=8,
         mlp_ratios=4,
         T=args.T,
@@ -84,10 +84,10 @@ def main():
     model.to(args.device)
 
     #dataset
-    json_file = "D:./jsons/ad/dataset_AD_test_10fold2.json"
-    root_dir = "/dataset/ad"
+    json_file = "D:./jsons/test.json"
+    root_dir = "/dataset/dataround"
     train_dataset = AgeData(json_file, root_dir, split='training', transform=None)
-    train_loader = DataLoader(train_dataset, batch_size=15, shuffle=True, num_workers=1)
+    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=1)
 
     test_dataset = AgeData(json_file, root_dir, split='validation', transform=None)
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=1)
@@ -118,7 +118,7 @@ def main():
 
     # logs
     out_dir = os.path.join(args.out_dir,
-                           f'./jsb/T{args.T}_{args.batch_size}_{args.opt}_lr{args.lr}_c{args.in_channels}_drop{args.drop}_json_sigmoid_0.95_{args.fisher_c}')
+                           f'./jsb/T{args.T}_{args.batch_size}_{args.opt}_lr{args.lr}_c{args.in_channels}_drop{args.drop}_json_softmax_0.95_{args.fisher_c}')
 
     if args.amp:
         out_dir += '_amp'
@@ -292,7 +292,7 @@ def main():
                     p = F.softmax(out_fr, dim=1)  # 转换为概率分布
                     confidence_score = p.max(dim=1)[0].item()  # 取最大概率作为置信度
                     model_pred_all.clear()
-                    if confidence_score >= 0.85:
+                    if confidence_score >= 0.95:
                         best_T = t + 1
                         break  # 满足条件，T循环
                     else:
@@ -324,7 +324,7 @@ def main():
                 total_T += best_T
 
                 functional.reset_net(model)
-            avg_T = total_T / 30
+            avg_T = total_T / 42
 
         test_time = time.time()
         test_speed = test_samples / (test_time - train_time)
@@ -393,4 +393,5 @@ def main():
 if __name__ == '__main__':
 
     main()
+
 
