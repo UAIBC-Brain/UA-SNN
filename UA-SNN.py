@@ -285,11 +285,11 @@ def main():
                  for t in range(args.T):
                     image_x = image[t]
                     out_fr += model(image_x)
-                    out_fr = out_fr / 2
-                    out_fr_1 = softplus_(out_fr) + 1.0
+                    out_fr_1 = out_fr / 2
+                    out_fr_2 = softplus_(out_fr_1) + 1.0
                     out_fr = out_fr.float()
-                    model_pred_all.append(out_fr_1.to(args.device))
-                    p = F.softmax(out_fr, dim=1)  # 转换为概率分布
+                    model_pred_all.append(out_fr_2.to(args.device))
+                    p = F.softmax(out_fr_2, dim=1)  # 转换为概率分布
                     confidence_score = p.max(dim=1)[0].item()  # 取最大概率作为置信度
                     model_pred_all.clear()
                     if confidence_score >= 0.95:
@@ -393,5 +393,6 @@ def main():
 if __name__ == '__main__':
 
     main()
+
 
 
