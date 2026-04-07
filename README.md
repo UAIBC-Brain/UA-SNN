@@ -1,5 +1,5 @@
-# MICCAI-2025-Paper-VT-SNN
-VT-SNN: Variable Time-step Spiking Neural Network Based on Uncertainty Measure and Its Application in Brain Disease Diagnosis
+# UA-SNN
+UA-SNN: Uncertainty-aware Spiking Neural Networks with Adaptive Time Steps for Robust Brain Diseases Detection
 
 ### Our codes are based on the following framework.
 
