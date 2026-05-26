@@ -17,17 +17,17 @@ class MLP(nn.Module):
         hidden_features = hidden_features or in_features
         self.fc1_conv = nn.Conv3d(in_features, hidden_features, kernel_size=1, stride=1)
         self.fc1_bn = nn.BatchNorm3d(hidden_features)
-        self.fc1_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  # 单步模式
+        self.fc1_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  
 
         self.fc2_conv = nn.Conv3d(hidden_features, out_features, kernel_size=1, stride=1)
         self.fc2_bn = nn.BatchNorm3d(out_features)
-        self.fc2_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  # 单步模式
+        self.fc2_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  
 
         self.c_hidden = hidden_features
         self.c_output = out_features
 
     def forward(self, x):
-        # 单步模式不需要时间维度处理
+      
         x = self.fc1_conv(x)
         x = self.fc1_bn(x)
         x = self.fc1_lif(x)
@@ -47,56 +47,56 @@ class spike_self_attention (nn.Module):
         self.scale = 0.125
         self.q_conv = nn.Conv1d(dim, dim, kernel_size=1, stride=1, bias=False)
         self.q_bn = nn.BatchNorm1d(dim)
-        self.q_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  # 单步模式
+        self.q_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True) 
 
         self.k_conv = nn.Conv1d(dim, dim, kernel_size=1, stride=1, bias=False)
         self.k_bn = nn.BatchNorm1d(dim)
-        self.k_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  # 单步模式
+        self.k_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  
 
         self.v_conv = nn.Conv1d(dim, dim, kernel_size=1, stride=1, bias=False)
         self.v_bn = nn.BatchNorm1d(dim)
-        self.v_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  # 单步模式
-        self.attn_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  # 单步模式
+        self.v_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  
+        self.attn_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  
 
         self.proj_conv = nn.Conv1d(dim, dim, kernel_size=1, stride=1)
         self.proj_bn = nn.BatchNorm1d(dim)
-        self.proj_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  # 单步模式
+        self.proj_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  
 
     def forward(self, x, res_attn):
-        # 输入形状: [B, C, D, H, W]
+     
         B, C, D, H, W = x.shape
         x = x.flatten(2)  # [B, C, D*H*W]
         N = D * H * W
 
-        # Q路径
+  
         q = self.q_conv(x)  # [B, C, N]
         q = self.q_bn(q)
         q = self.q_lif(q)
         q = q.reshape(B, self.num_heads, C // self.num_heads, N).permute(0, 1, 3, 2)  # [B, num_heads, N, head_dim]
 
-        # K路径
+
         k = self.k_conv(x)
         k = self.k_bn(k)
         k = self.k_lif(k)
         k = k.reshape(B, self.num_heads, C // self.num_heads, N).permute(0, 1, 2, 3)  # [B, num_heads, head_dim, N]
 
-        # V路径
+     
         v = self.v_conv(x)
         v = self.v_bn(v)
         v = self.v_lif(v)
         v = v.reshape(B, self.num_heads, C // self.num_heads, N).permute(0, 1, 3, 2)  # [B, num_heads, N, head_dim]
 
-        # 注意力计算
+      
         attn = (q @ k) * self.scale
         x = attn @ v
         x = x.permute(0, 1, 3, 2).reshape(B, C, N)  # [B, C, N]
         x = self.attn_lif(x)
 
-        # 投影
+      
         x = self.proj_conv(x)
         x = self.proj_bn(x)
         x = self.proj_lif(x)
-        x = x.reshape(B, C, D, H, W)  # 恢复空间维度
+        x = x.reshape(B, C, D, H, W)  
         return x, v
 
 
@@ -135,36 +135,36 @@ class SFP(nn.Module):
         self.proj_conv = nn.Conv3d(in_channels, embed_dims // 8, kernel_size=3, stride=1, padding=1, bias=False)
         self.proj_bn = nn.BatchNorm3d(embed_dims // 8)
         self.dropout = nn.Dropout(dropout_rate)
-        self.proj_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  # 单步模式
+        self.proj_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  
         self.maxpool = nn.MaxPool3d(kernel_size=3, stride=2, padding=1)
 
         # 第二层
         self.proj_conv1 = nn.Conv3d(embed_dims // 8, embed_dims // 4, kernel_size=3, stride=1, padding=1, bias=False)
         self.proj_bn1 = nn.BatchNorm3d(embed_dims // 4)
         self.dropout1 = nn.Dropout(dropout_rate)
-        self.proj_lif1 = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  # 单步模式
+        self.proj_lif1 = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True) 
         self.maxpool1 = nn.MaxPool3d(kernel_size=3, stride=2, padding=1)
 
         # 第三层
         self.proj_conv2 = nn.Conv3d(embed_dims // 4, embed_dims // 2, kernel_size=3, stride=1, padding=1, bias=False)
         self.proj_bn2 = nn.BatchNorm3d(embed_dims // 2)
-        self.proj_lif2 = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  # 单步模式
+        self.proj_lif2 = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  
         self.maxpool2 = nn.MaxPool3d(kernel_size=3, stride=2, padding=1)
 
         # 第四层
         self.proj_conv3 = nn.Conv3d(embed_dims // 2, embed_dims, kernel_size=3, stride=1, padding=1, bias=False)
         self.proj_bn3 = nn.BatchNorm3d(embed_dims)
         self.dropout2 = nn.Dropout(dropout_rate)
-        self.proj_lif3 = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  # 单步模式
+        self.proj_lif3 = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True) 
         self.maxpool3 = nn.MaxPool3d(kernel_size=3, stride=2, padding=1)
 
         # RPE
         self.rpe_conv = nn.Conv3d(embed_dims, embed_dims, kernel_size=3, stride=1, padding=1, bias=False)
         self.rpe_bn = nn.BatchNorm3d(embed_dims)
-        self.rpe_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  # 单步模式
+        self.rpe_lif = neuron.LIFNode(tau=2.0, detach_reset=True, cupy_fp32_inference=True)  
 
     def forward(self, x):
-        # 输入形状: [B, C, D, H, W]
+       
         B, C, D, H, W = x.shape
 
         # 第一层
@@ -209,15 +209,15 @@ class spike_basd_transformers(nn.Module):
                  img_size_d=128, img_size_h=128, img_size_w=128, patch_size=16, in_channels=1, drop_rate=0.1, num_classes=2,
                  embed_dims=[64, 128, 256], num_heads=[1, 2, 4], mlp_ratios=[4, 4, 4], qkv_bias=False, qk_scale=None,
                  attn_drop_rate=0., drop_path_rate=0., norm_layer=nn.LayerNorm, T=4,
-                 depths=[6, 8, 6],  # 确保这里是列表
+                 depths=[6, 8, 6], 
                  sr_ratios=[8, 4, 2], pretrained=False, pretrained_cfg=None
                  ):
         super().__init__()
         self.num_classes = num_classes
-        self.depths = depths if isinstance(depths, list) else [depths]  # 确保depths是列表
+        self.depths = depths if isinstance(depths, list) else [depths]  
         self.T = T
 
-        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(self.depths))]  # 使用self.depths
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(self.depths))]  
 
         patch_embed = SFP(
             img_size_d=img_size_d,
@@ -267,8 +267,7 @@ class spike_basd_transformers(nn.Module):
         return x.flatten(2).mean(2)  # [B, C]
 
     def forward(self, x):
-        # 单步模式: 输入形状 [B, C, D, H, W]
-        # 在时间维度上循环
+     
         # outputs = []
         # for t in range(self.T):
         outputs = self.forward_features(x)
