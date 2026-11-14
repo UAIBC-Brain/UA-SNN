@@ -15,19 +15,6 @@ Official implementation of **UA-SNN: Uncertainty-aware Spiking Neural Networks w
 - scikit-learn
 - TensorBoard
 
-## Data
-
-The split file contains `training`, `validation`, and `test` subsets:
-
-```json
-{
-  "training": [{"image": "sub-001", "label": 0}],
-  "validation": [{"image": "sub-002", "label": 1}],
-  "test": [{"image": "sub-003", "label": 0}]
-}
-```
-
-Set `--root-dir` to the directory containing the MRI volumes.
 
 ## Training
 
