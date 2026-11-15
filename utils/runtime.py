@@ -62,7 +62,7 @@ def evaluate(model, data_loader, args):
                 output = output_sum / step
                 confidence = F.softmax(output, dim=1).amax(dim=1)
                 threshold = args.u_base - args.eta * step / args.T
-                if bool(torch.all(confidence >= threshold)):
+                if bool(torch.all(confidence > threshold)):
                     best_time_step = step
                     break
 
