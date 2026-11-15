@@ -15,6 +15,7 @@ class Lossess(nn.Module):
         lambda_1,
         lambda_2,
         label_onehot,
+        epochss=None,
         return_output="alpha",
         loss="IEDL",
         compute_loss=False,
