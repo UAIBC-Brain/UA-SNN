@@ -20,6 +20,7 @@ class Lossess(nn.Module):
         loss="IEDL",
         compute_loss=False,
     ):
+       
         self.loss_mse_ = evidence_alpha.new_tensor(0.0)
         self.loss_var_ = evidence_alpha.new_tensor(0.0)
         self.loss_kl_ = evidence_alpha.new_tensor(0.0)
@@ -27,7 +28,9 @@ class Lossess(nn.Module):
 
         if lambda_1 < 0 or lambda_2 < 0:
             raise ValueError(
-                "lambda_1 and lambda_2 must be non-negative regularization coefficients"
+                "lambda_1 and lambda_2 must be non-negative. "
+                "Use --kl_c 1 for the main UA-SNN setting or --kl_c 0 "
+                "for the without-KL ablation."
             )
 
         if compute_loss:
