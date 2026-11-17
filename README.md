@@ -26,15 +26,6 @@ python UA-SNN.py \
   --lambda-2 1.0
 ```
 
-## Evaluation
-
-```bash
-python test.py \
-  --split-json ./jsons/old/data_example.json \
-  --root-dir ./dataset/data_round \
-  --checkpoint ./logs/fold1_lambda1_0.01_lambda2_1.0/checkpoint_best_validation.pth
-```
-
 ## Model
 
 <p align="center">
