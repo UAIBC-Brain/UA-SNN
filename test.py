@@ -9,8 +9,14 @@ from utils.runtime import build_model, evaluate
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="UA-SNN Testing")
+    parser = argparse.ArgumentParser(description="UA-SNN Evaluation")
     parser.add_argument("--split-json", default="./jsons/old/data_example.json")
+    parser.add_argument(
+        "--split",
+        choices=("validation", "test"),
+        default="test",
+        help="Partition in the split JSON to evaluate",
+    )
     parser.add_argument("--root-dir", default="./dataset/data_round")
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--output", default=None)
@@ -29,17 +35,19 @@ def parse_args():
 
 def main():
     args = parse_args()
-    test_dataset = AgeData(args.split_json, args.root_dir, split="test")
-    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=1)
+    dataset = AgeData(args.split_json, args.root_dir, split=args.split)
+    data_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1)
     model = build_model(args).to(args.device)
     checkpoint = torch.load(args.checkpoint, map_location=args.device)
     model.load_state_dict(checkpoint["model"])
-    metrics = evaluate(model, test_loader, args)
+    metrics = evaluate(model, data_loader, args)
     print(
         f"ACC={metrics['acc']:.4f}, SEN={metrics['sen']:.4f}, "
         f"SPE={metrics['spe']:.4f}, F1={metrics['f1']:.4f}, Avg.T={metrics['avg_t']:.4f}"
     )
-    output_path = args.output or os.path.join(os.path.dirname(args.checkpoint), "test_results.json")
+    output_path = args.output or os.path.join(
+        os.path.dirname(args.checkpoint), f"{args.split}_results.json"
+    )
     with open(output_path, "w", encoding="utf-8") as file:
         json.dump(metrics, file, indent=4)
 
