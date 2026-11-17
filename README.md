@@ -90,38 +90,6 @@ python test.py --split-json ./split.json --root-dir ./dataset/data_round --check
 
 The evaluator reports accuracy (ACC), sensitivity (SEN), specificity (SPE), F1, and the mean number of time steps (Avg. T). It uses `1` as the positive class and saves `test_results.json` beside the checkpoint by default. Pass `--output` to choose another file.
 
-## Five-fold protocol
-
-Prepare one split manifest per outer fold. Rotate the held-out `test` fold across the five manifests. Within each manifest, divide the combined data from the other four folds into `training` and `validation` at a 4:1 ratio.
-
-1. Train a model on the fold's `training` subset for each candidate value of `--lambda-1`. Pass the fold's manifest via `--split-json` and set `--fold-index` to its index. Each run saves the checkpoint with the highest validation accuracy under its training-time evaluation settings.
-2. Score each candidate checkpoint and early-exit setting on that fold's `validation` subset with `--split validation`. The confidence threshold at step `t` is `u_base - eta * t / T`. Pass `--u-base` and `--eta` for the candidate setting and use the same `--T` as in training.
-3. Use your predefined validation criterion to select the checkpoint and early-exit settings. Record the selected `--lambda-1`, checkpoint, `--u-base`, and `--eta` for the fold. Then run the held-out evaluation with `--split test`, the selected checkpoint, and the selected inference settings.
-4. Report the mean and standard deviation of each metric across the five held-out test folds.
-
-For example, evaluate one confidence setting on the validation subset of the example run above.
-
-```bash
-python test.py --split validation --split-json ./split.json --checkpoint ./logs/fold1_lambda1_0.01_lambda2_1.0/checkpoint_best_validation.pth --u-base 0.95 --eta 0.2
-```
-
-Validation writes `validation_results.json` beside the checkpoint by default. Give each candidate a distinct `--output` path during a sweep.
-
-## Experiment settings
-
-| Argument | Default | Purpose |
-| --- | --- | --- |
-| `--T` | `4` | Number of training time steps and maximum number of inference steps |
-| `--u-base` | `0.95` | Base inference confidence threshold |
-| `--eta` | `0.2` | Amount subtracted from the base threshold by the final step |
-| `--lambda-1` | `0.01` | Weight of the Fisher information regularizer |
-| `--lambda-2` | `1.0` | Weight of the KL divergence term |
-| `--fold-index` | `1` | Fold label in the training output path. Use `--split-json` to select a fold's data. |
-
-To run the **KL ablation**, append `--lambda-2 0` to the training command. Use the same data split and training settings for both runs.
-
-To evaluate the same checkpoint for exactly `T` steps, append `--u-base 1.0 --eta 0.0 --output ./logs/test_results_fixed_t.json` to the evaluation command. Compare the classification metrics and Avg. T with the default adaptive evaluation.
-
 ## Repository map
 
 | Path | Contents |
