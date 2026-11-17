@@ -2,21 +2,133 @@
 
 Official implementation of **UA-SNN: Uncertainty-aware Spiking Neural Networks with Adaptive Time Steps for Robust Brain Disease Detection**.
 
-## Requirements
+UA-SNN takes a 3D brain MRI volume as input and predicts one of two classes.
 
-- Python 3.9
-- PyTorch 1.13.0
-- NumPy 1.23.0
-- timm 0.6.12
-- CuPy 13.3.0
-- SpikingJelly 0.0.0.0.12
-- MONAI
-- SimpleITK 2.4.0
-- scikit-learn
-- TensorBoard
-
-## Model
+[Method](#method) · [Setup](#setup) · [Data](#data-preparation) · [Training](#training) · [Evaluation](#evaluation) · [Five-fold protocol](#five-fold-protocol) · [Experiment settings](#experiment-settings)
 
 <p align="center">
-  <img src="https://github.com/UAIBC-Brain/UA-SNN/blob/main/new_model2.png">
+  <a href="./new_model2.png"><img src="./new_model2.png" alt="UA-SNN architecture showing 3D MRI feature extraction, spiking self-attention, evidential learning, and adaptive time-step selection"></a>
 </p>
+
+## Method
+
+| Component | Implementation |
+| --- | --- |
+| 3D spiking Transformer | Projects volumetric features with 3D convolutions and leaky integrate-and-fire (LIF) neurons, then processes the features with spiking self-attention. |
+| Evidential training | Maps logits to Dirichlet concentrations and trains with a Fisher-weighted evidential loss, including a Fisher information regularizer and a KL divergence term. |
+| Adaptive inference | Averages the logits across the steps taken so far. Inference stops when the maximum softmax probability exceeds the current threshold or when the step budget is reached. |
+
+## Setup
+
+```bash
+git clone https://github.com/UAIBC-Brain/UA-SNN.git
+cd UA-SNN
+```
+
+Use a Python 3.9 environment and install the packages below. The examples use `cuda:0`, so select PyTorch and CuPy builds compatible with your CUDA environment.
+
+| Package | Version |
+| --- | --- |
+| PyTorch | `1.13.0` |
+| NumPy | `1.23.0` |
+| timm | `0.6.12` |
+| CuPy | `13.3.0` |
+| SpikingJelly | `0.0.0.0.12` |
+| SimpleITK | `2.4.0` |
+| MONAI, scikit-learn, TensorBoard | Unpinned |
+
+## Data preparation
+
+Place your MRI volumes under `./dataset/data_round` or set `--root-dir` to their location. Create a `split.json` with `training`, `validation`, and `test` arrays. Each `image` path is relative to `--root-dir`, and each `label` is `0` or `1`. The example below uses NIfTI filenames.
+
+```json
+{
+  "training": [
+    {"image": "train/sub-001.nii.gz", "label": 0},
+    {"image": "train/sub-002.nii.gz", "label": 1}
+  ],
+  "validation": [
+    {"image": "val/sub-003.nii.gz", "label": 0},
+    {"image": "val/sub-004.nii.gz", "label": 1}
+  ],
+  "test": [
+    {"image": "test/sub-005.nii.gz", "label": 0},
+    {"image": "test/sub-006.nii.gz", "label": 1}
+  ]
+}
+```
+
+The loader reads volumes with SimpleITK. For a `128 × 128 × 128` input, the center crop is `96 × 112 × 96` voxels (`D × H × W`). Batched training expects a consistent post-crop shape.
+
+Supply your own image files and update the paths to match. [Example split manifest](./jsons/old/data_example.json)
+
+## Training
+
+Run from the repository root.
+
+```bash
+python UA-SNN.py --split-json ./split.json --root-dir ./dataset/data_round --device cuda:0
+```
+
+With the default output directory and experiment settings, training writes to `./logs/fold1_lambda1_0.01_lambda2_1.0/`.
+
+| File | Contents |
+| --- | --- |
+| `checkpoint_best_validation.pth` | Checkpoint selected by validation accuracy |
+| `checkpoint_latest.pth` | Latest checkpoint for resuming with `--resume` |
+| `args.txt` | Command used for the completed run |
+
+View the training loss, training accuracy, and validation accuracy with `tensorboard --logdir ./logs`.
+
+## Evaluation
+
+Evaluate the best validation checkpoint on the `test` split.
+
+```bash
+python test.py --split-json ./split.json --root-dir ./dataset/data_round --checkpoint ./logs/fold1_lambda1_0.01_lambda2_1.0/checkpoint_best_validation.pth
+```
+
+The evaluator reports accuracy (ACC), sensitivity (SEN), specificity (SPE), F1, and the mean number of time steps (Avg. T). It uses `1` as the positive class and saves `test_results.json` beside the checkpoint by default. Pass `--output` to choose another file.
+
+## Five-fold protocol
+
+Prepare one split manifest per outer fold. Rotate the held-out `test` fold across the five manifests. Within each manifest, divide the combined data from the other four folds into `training` and `validation` at a 4:1 ratio.
+
+1. Train a model on the fold's `training` subset for each candidate value of `--lambda-1`. Pass the fold's manifest via `--split-json` and set `--fold-index` to its index. Each run saves the checkpoint with the highest validation accuracy under its training-time evaluation settings.
+2. Score each candidate checkpoint and early-exit setting on that fold's `validation` subset with `--split validation`. The confidence threshold at step `t` is `u_base - eta * t / T`. Pass `--u-base` and `--eta` for the candidate setting and use the same `--T` as in training.
+3. Use your predefined validation criterion to select the checkpoint and early-exit settings. Record the selected `--lambda-1`, checkpoint, `--u-base`, and `--eta` for the fold. Then run the held-out evaluation with `--split test`, the selected checkpoint, and the selected inference settings.
+4. Report the mean and standard deviation of each metric across the five held-out test folds.
+
+For example, evaluate one confidence setting on the validation subset of the example run above.
+
+```bash
+python test.py --split validation --split-json ./split.json --checkpoint ./logs/fold1_lambda1_0.01_lambda2_1.0/checkpoint_best_validation.pth --u-base 0.95 --eta 0.2
+```
+
+Validation writes `validation_results.json` beside the checkpoint by default. Give each candidate a distinct `--output` path during a sweep.
+
+## Experiment settings
+
+| Argument | Default | Purpose |
+| --- | --- | --- |
+| `--T` | `4` | Number of training time steps and maximum number of inference steps |
+| `--u-base` | `0.95` | Base inference confidence threshold |
+| `--eta` | `0.2` | Amount subtracted from the base threshold by the final step |
+| `--lambda-1` | `0.01` | Weight of the Fisher information regularizer |
+| `--lambda-2` | `1.0` | Weight of the KL divergence term |
+| `--fold-index` | `1` | Fold label in the training output path. Use `--split-json` to select a fold's data. |
+
+To run the **KL ablation**, append `--lambda-2 0` to the training command. Use the same data split and training settings for both runs.
+
+To evaluate the same checkpoint for exactly `T` steps, append `--u-base 1.0 --eta 0.0 --output ./logs/test_results_fixed_t.json` to the evaluation command. Compare the classification metrics and Avg. T with the default adaptive evaluation.
+
+## Repository map
+
+| Path | Contents |
+| --- | --- |
+| [UA-SNN.py](./UA-SNN.py) and [test.py](./test.py) | Training and evaluation entry points |
+| [model_test/model.py](./model_test/model.py) | 3D spiking Transformer backbone |
+| [losses.py](./losses.py) | Evidential loss and regularization terms |
+| [utils/runtime.py](./utils/runtime.py) | Model construction and adaptive evaluation |
+| [utils/new_jsaon_data_utils.py](./utils/new_jsaon_data_utils.py) | MRI loading and center cropping |
+| [energy_consumption_calculation/](./energy_consumption_calculation/README.md) | Operation counting and energy estimation utilities |
