@@ -15,17 +15,6 @@ Official implementation of **UA-SNN: Uncertainty-aware Spiking Neural Networks w
 - scikit-learn
 - TensorBoard
 
-
-## Training
-
-```bash
-python UA-SNN.py \
-  --split-json ./jsons/old/data_example.json \
-  --root-dir ./dataset/data_round \
-  --lambda-1 0.01 \
-  --lambda-2 1.0
-```
-
 ## Model
 
 <p align="center">
